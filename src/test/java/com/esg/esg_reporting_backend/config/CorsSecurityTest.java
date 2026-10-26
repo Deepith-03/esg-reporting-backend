@@ -9,6 +9,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
@@ -88,5 +89,37 @@ class CorsSecurityTest {
                         .header("Origin", DEPLOYED_VERCEL_ORIGIN))
                 .andExpect(status().isUnauthorized())
                 .andExpect(header().string("Access-Control-Allow-Origin", DEPLOYED_VERCEL_ORIGIN));
+    }
+
+    @Test
+    @DisplayName("Admin can authenticate with LocalDevOnly123!")
+    void adminCanAuthenticateWithLocalDevPassword() throws Exception {
+        mockMvc.perform(get("/api/organizations")
+                        .with(httpBasic("admin", "LocalDevOnly123!")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("Admin can authenticate with Admin123!")
+    void adminCanAuthenticateWithAdmin123() throws Exception {
+        mockMvc.perform(get("/api/organizations")
+                        .with(httpBasic("admin", "Admin123!")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("DataEntry can authenticate with DataEntry123!")
+    void dataEntryCanAuthenticate() throws Exception {
+        mockMvc.perform(get("/api/organizations")
+                        .with(httpBasic("dataentry", "DataEntry123!")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("Invalid credentials return 401 Unauthorized")
+    void invalidCredentialsReturnUnauthorized() throws Exception {
+        mockMvc.perform(get("/api/organizations")
+                        .with(httpBasic("admin", "IncorrectPassword999!")))
+                .andExpect(status().isUnauthorized());
     }
 }
