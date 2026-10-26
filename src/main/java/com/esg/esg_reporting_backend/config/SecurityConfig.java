@@ -62,6 +62,9 @@ public class SecurityConfig {
             .cors(Customizer.withDefaults())
             .authorizeHttpRequests(auth -> auth
 
+                // Preflight CORS requests must be permitted before authentication checks
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
                 // Admin-only Data Cleanup & Management endpoints
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
