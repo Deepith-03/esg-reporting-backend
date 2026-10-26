@@ -431,25 +431,38 @@ The platform supports a modular, pluggable carbon calculation engine:
 
 ## Deployment Instructions
 
-### Production Deployment via Docker
+### Production Deployment via Docker & Render
 
-Create a `Dockerfile` in `esg-reporting-backend/`:
+The repository includes a production multi-stage [`Dockerfile`](Dockerfile) using Maven 3.9 on Temurin JDK 17 for building, and minimal Temurin JRE 17 Alpine for execution:
+
 ```dockerfile
-FROM eclipse-temurin:17-jdk-alpine AS build
+FROM maven:3.9.6-eclipse-temurin-17-alpine AS builder
 WORKDIR /app
-COPY .mvn/ .mvn
-COPY mvnw pom.xml ./
-RUN ./mvnw dependency:go-offline -B
+COPY pom.xml .
+RUN mvn dependency:go-offline -B || true
 COPY src ./src
-RUN ./mvnw clean package -DskipTests
+RUN mvn clean package -DskipTests
 
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
-COPY --from=build /app/target/esg-reporting-backend-*.jar app.jar
 RUN mkdir -p uploads/evidence
+COPY --from=builder /app/target/*.jar app.jar
+ENV PORT=8081
 EXPOSE 8081
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT} -jar app.jar"]
 ```
+
+#### Deploying as a Web Service on Render:
+1. In the Render Dashboard, click **New +** &rarr; **Web Service**.
+2. Select your GitHub repository: `https://github.com/Deepith-03/esg-reporting-backend`.
+3. Set **Runtime** to **Docker** (Render will automatically detect the `Dockerfile` in the root).
+4. Under **Environment Variables**, configure:
+   - `SPRING_DATASOURCE_URL` = `jdbc:mysql://<your-mysql-host>:<port>/<database>?useSSL=true&allowPublicKeyRetrieval=true`
+   - `SPRING_DATASOURCE_USERNAME` = `<your-db-username>`
+   - `SPRING_DATASOURCE_PASSWORD` = `<your-db-password>`
+   - `ESG_DEMO_PASSWORD` = `<secure-admin-password>`
+   - `CARBON_CALCULATOR_PROVIDER` = `SAMPLE_LOCAL`
+5. Render assigns `PORT` dynamically, and the Docker container automatically binds Spring Boot to Render's assigned port.
 
 Run container with environment variables:
 ```bash
